@@ -2,45 +2,53 @@
 # YouTube: https://youtube.com/@termuxlabpro
 # Telegram: https://t.me/termuxlabpro
 
-import os, time, secrets
+import os, time, secrets, binascii
 from ecdsa import SigningKey, SECP256k1
+from Crypto.Hash import keccak
+from colorama import Fore, init
 
-# === Pure Python Keccak256 (lightweight) ===
-class Keccak256:
-    def __init__(self):
-        self.keccak = __import__('hashlib').new('sha3_256')
-    def update(self, x):
-        self.keccak.update(x)
-    def digest(self):
-        return self.keccak.digest()
+init(autoreset=True)
 
 def banner():
     os.system("clear")
-    print("╔════════════════════════════════════╗")
-    print("║           T . L . P                ║")
-    print("║      Termux Lab Pro                ║")
-    print("╚════════════════════════════════════╝")
-    print("📺 YT: https://youtube.com/@termuxlabpro")
-    print("💬 TG: https://t.me/termuxlabpro")
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    art = [
+        Fore.GREEN + "████████╗██╗     ██████╗ ",
+        "╚══██╔══╝██║     ██╔══██╗",
+        "   ██║   ██║     ██████╔╝",
+        "   ██║   ██║     ██╔═══╝ ",
+        "   ██║   ███████╗██║     ",
+        "   ╚═╝   ╚══════╝╚═╝     ",
+        Fore.CYAN + "\n╔═══════════════════════════════╗",
+        Fore.CYAN + "║         " + Fore.MAGENTA + "T . L . P" + Fore.CYAN + "             ║",
+        Fore.CYAN + "║     Termux Lab Pro            ║",
+        Fore.CYAN + "╚═══════════════════════════════╝",
+        Fore.YELLOW + "📺 YouTube : https://youtube.com/@termuxlabpro",
+        Fore.YELLOW + "💬 Telegram: https://t.me/termuxlabpro",
+        Fore.MAGENTA + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    ]
+    for line in art:
+        print(line)
+        time.sleep(0.05)
 
-def generate_ethereum_address():
-    priv_key = secrets.token_bytes(32)
-    priv_hex = priv_key.hex()
+def priv_to_eth(priv_hex):
+    private_key_bytes = binascii.unhexlify(priv_hex)
+    sk = SigningKey.from_string(private_key_bytes, curve=SECP256k1)
+    vk = sk.get_verifying_key().to_string()
+    public_key_bytes = b"\x04" + vk
+    keccak_hash = keccak.new(digest_bits=256)
+    keccak_hash.update(public_key_bytes[1:])
+    eth_address = "0x" + keccak_hash.digest()[-20:].hex()
+    return eth_address
 
-    sk = SigningKey.from_string(priv_key, curve=SECP256k1)
-    vk = sk.verifying_key
-    pubkey_bytes = b'\x04' + vk.to_string()  # Uncompressed pubkey
-
-    k = Keccak256()
-    k.update(pubkey_bytes)
-    addr = '0x' + k.digest()[-20:].hex()
-
-    print(f"[🔑] Private: {priv_hex}")
-    print(f"[📬] Address: {addr}\n")
-
-if __name__ == "__main__":
+def main():
     banner()
     while True:
-        generate_ethereum_address()
+        priv = secrets.token_hex(32)
+        addr = priv_to_eth(priv)
+        print(f"{Fore.YELLOW}[🔑] Private: {Fore.GREEN}{priv}")
+        print(f"{Fore.YELLOW}[📬] Address: {Fore.CYAN}{addr}")
+        print(Fore.MAGENTA + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         time.sleep(1)
+
+if __name__ == "__main__":
+    main()
