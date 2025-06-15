@@ -1,53 +1,58 @@
-# MIT License (c) 2025 Termux Lab Pro
-# YouTube: https://youtube.com/@termuxlabpro
-# Telegram: https://t.me/termuxlabpro
-
-import os, time, secrets, binascii
+import os
+import time
+import secrets
+import binascii
+import hashlib
 from ecdsa import SigningKey, SECP256k1
-from Crypto.Hash import keccak
-from colorama import Fore, init
-
-init(autoreset=True)
 
 def banner():
     os.system("clear")
     art = [
-        Fore.GREEN + "████████╗██╗     ██████╗ ",
+        "████████╗██╗     ██████╗ ",
         "╚══██╔══╝██║     ██╔══██╗",
         "   ██║   ██║     ██████╔╝",
         "   ██║   ██║     ██╔═══╝ ",
         "   ██║   ███████╗██║     ",
         "   ╚═╝   ╚══════╝╚═╝     ",
-        Fore.CYAN + "\n╔═══════════════════════════════╗",
-        Fore.CYAN + "║         " + Fore.MAGENTA + "T . L . P" + Fore.CYAN + "             ║",
-        Fore.CYAN + "║     Termux Lab Pro            ║",
-        Fore.CYAN + "╚═══════════════════════════════╝",
-        Fore.YELLOW + "📺 YouTube : https://youtube.com/@termuxlabpro",
-        Fore.YELLOW + "💬 Telegram: https://t.me/termuxlabpro",
-        Fore.MAGENTA + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "\n╔═══════════════════════════════╗",
+        "║         T . L . P             ║",
+        "║     Termux Lab Pro            ║",
+        "╚═══════════════════════════════╝",
+        "📺 YouTube : https://youtube.com/@termuxlabpro",
+        "💬 Telegram: https://t.me/termuxlabpro",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     ]
     for line in art:
         print(line)
         time.sleep(0.05)
 
+def keccak256(data):
+    """Compute the Keccak-256 hash."""
+    keccak = hashlib.new('sha3_256')
+    keccak.update(data)
+    return keccak.digest()
+
 def priv_to_eth(priv_hex):
+    """Convert a hexadecimal private key to an Ethereum address."""
+    # Convert the private key from hex to bytes
     private_key_bytes = binascii.unhexlify(priv_hex)
+    # Generate the public key using ECDSA
     sk = SigningKey.from_string(private_key_bytes, curve=SECP256k1)
-    vk = sk.get_verifying_key().to_string()
-    public_key_bytes = b"\x04" + vk
-    keccak_hash = keccak.new(digest_bits=256)
-    keccak_hash.update(public_key_bytes[1:])
-    eth_address = "0x" + keccak_hash.digest()[-20:].hex()
+    public_key_bytes = sk.get_verifying_key().to_string()
+    # Hash the public key to get the Ethereum address
+    keccak_hash = keccak256(b'\x04' + public_key_bytes)  # Prepend 0x04 for uncompressed public key
+    eth_address = "0x" + keccak_hash[-20:].hex()
     return eth_address
 
 def main():
     banner()
     while True:
-        priv = secrets.token_hex(32)
-        addr = priv_to_eth(priv)
-        print(f"{Fore.YELLOW}[🔑] Private: {Fore.GREEN}{priv}")
-        print(f"{Fore.YELLOW}[📬] Address: {Fore.CYAN}{addr}")
-        print(Fore.MAGENTA + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        # Generate a random private key
+        priv = secrets.token_hex(32)  # Generate a random 32-byte private key
+        addr = priv_to_eth(priv)  # Convert the private key to an Ethereum address
+        print(f"[🔑] Private Key: {priv}")  # Show the private key
+        print(f"[📬] Ethereum Address: {addr}")  # Show the generated Ethereum address
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         time.sleep(1)
 
 if __name__ == "__main__":
