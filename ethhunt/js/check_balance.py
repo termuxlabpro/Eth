@@ -2,7 +2,7 @@ import requests
 import sys
 
 def check_balance(address, api_key, chain):
-    # Determine the correct API URL based on the selected chain
+    # Determine the correct API URL based on the selected chain for main balance
     if chain == 'eth':
         url = f'https://api.etherscan.io/api?module=account&action=balance&address={address}&tag=latest&apikey={api_key}'
     elif chain == 'bsc':
@@ -18,7 +18,7 @@ def check_balance(address, api_key, chain):
     
     if data['status'] == '1':
         balance = int(data['result']) / 1e18  # Convert Wei to Ether or equivalent
-        print(f"Balance for address {address} on {chain.upper()}: {balance} ETH")
+        print(f"Main Balance for address {address} on {chain.upper()}: {balance} ETH")
     else:
         print("Error:", data['message'])
 
