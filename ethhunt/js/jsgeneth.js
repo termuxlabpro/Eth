@@ -18,7 +18,7 @@ const colors = {
 
 // Function to display banner
 const displayBanner = () => {
-    console.clear();
+    console.clear(); // Clear the terminal
     const bannerArt = [
         `${colors.green}████████╗██╗     ██████╗ `,
         "╚══██╔══╝██║     ██╔══██╗",
@@ -49,30 +49,48 @@ const generateWallet = () => {
     return { privateKey: privateKey.toString('hex'), address }; // Return private key and address
 };
 
-// Function to generate address from a given private key
-const addressFromPrivateKey = (privateKeyHex) => {
-    const keyPair = ecInstance.keyFromPrivate(privateKeyHex);
-    const publicKey = keyPair.getPublic().encode('hex');
-    const address = '0x' + keccak256(Buffer.from(publicKey.slice(2), 'hex')).slice(-40);
-    return address;
-};
-
 // Function to check balance using separate API keys for each chain
-const checkBalance = (address, apiKeys) => {
+const checkBalance = (address, apiKeys, privateKey) => {
     const chains = [
         { id: 'eth', name: 'Ethereum', apiKey: apiKeys.Etherscan },
         { id: 'bsc', name: 'BSC', apiKey: apiKeys.BSCScan },
         { id: 'polygon', name: 'Polygon', apiKey: apiKeys.PolygonScan },
     ];
 
-    chains.forEach(({ id, name, apiKey }) => {
-        exec(`python3 check_balance.py ${address} ${apiKey} ${id}`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error executing Python script: ${stderr}`);
-                return;
-            }
-            console.log(stdout);
+    const balanceResults = {
+        Eth: 0,
+        Bsc: 0,
+        Pol: 0
+    };
+
+    const balancePromises = chains.map(({ id, name, apiKey }) => {
+        return new Promise((resolve) => {
+            exec(`python3 check_balance.py ${address} ${apiKey} ${id}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error executing Python script for ${name}: ${stderr}`);
+                    resolve();
+                    return;
+                }
+
+                // Assuming the Python script returns balance in a specific format
+                const balanceMatch = stdout.match(/Balance: (\d+\.\d+)/);
+                if (balanceMatch) {
+                    const balance = parseFloat(balanceMatch[1]);
+                    balanceResults[name] = balance;
+                }
+                resolve();
+            });
         });
+    });
+
+    Promise.all(balancePromises).then(() => {
+        // Output the results in the desired format
+        console.log(`\n${colors.green}Generated Private Key: ${privateKey}${colors.reset}`);
+        console.log(`${colors.green}Wallet Address: ${address}${colors.reset}`);
+        console.log(`Balance ➤`);
+        console.log(`Eth: ${balanceResults.Eth}`);
+        console.log(`Bsc: ${balanceResults.Bsc}`);
+        console.log(`Pol: ${balanceResults.Pol}`);
     });
 };
 
@@ -85,6 +103,7 @@ const promptForApiKeys = (callback) => {
 
     const apiKeys = {};
 
+    // Function to ask for the API key for a specific chain
     const askForApiKey = (chain) => {
         rl.question(`Please enter your ${chain} API key: `, (apiKey) => {
             apiKeys[chain] = apiKey;
@@ -120,9 +139,7 @@ const startWalletGeneration = (apiKeys) => {
     // Generate wallets and check balances at set intervals
     setInterval(() => {
         const { privateKey, address } = generateWallet();
-        console.log(`\n${colors.cyan}Generated Private Key: ${privateKey}${colors.reset}`);
-        console.log(`${colors.cyan}Wallet Address: ${address}${colors.reset}`);
-        checkBalance(address, apiKeys);
+        checkBalance(address, apiKeys, privateKey);
     }, 1000); // Repeat every 1 second
 
     // Clear loading animation after 5 seconds
